@@ -1,0 +1,8 @@
+fastapi==0.100.1
+uvicorn
+PyJWT==1.7.1
+pytest
+pydantic
+httpx
+SQLAlchemy
+psycopg2-binary
