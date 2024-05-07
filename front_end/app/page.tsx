@@ -1,113 +1,164 @@
-import Image from "next/image";
+'use client'
+import type { NextPage } from 'next'
+import { Button } from '@/components/ui/button'
+import Image from 'next/image'
+import { Contract, ethers } from 'ethers'
+import { useState, useEffect } from 'react'
+import { Counter__factory } from '@/generated/contract-types'
+import { Card } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 
-export default function Home() {
+declare let window: any
+
+const Home: NextPage = () => {
+  const [address, setAddress] = useState<string>()
+  const [balance, setBalance] = useState<string>()
+  const [count, setCount] = useState<number>(0)
+  const [number, setNumber] = useState<number>()
+  const [time, setTime] = useState(Date.now())
+  const COUNTER_ADDRESS = '0x478F61Ce2703157049F5D2E6bf488722c4bb3c92'
+  // https://sepolia.etherscan.io/address/0x478f61ce2703157049f5d2e6bf488722c4bb3c92
+  useEffect(() => {
+    const interval = setInterval(() => setTime(Date.now()), 5000)
+    return () => {
+      clearInterval(interval)
+    }
+  }, [])
+
+  useEffect(() => {
+    const provider = new ethers.providers.InfuraProvider('sepolia')
+    const counter = Counter__factory.connect(COUNTER_ADDRESS, provider)
+    if (counter) {
+      counter.number().then((count) => {
+        setCount(count.toNumber())
+      })
+    }
+  }, [time])
+
+  const handleConnectWallet = async () => {
+    const provider = new ethers.providers.Web3Provider(window.ethereum)
+    await provider.send('eth_requestAccounts', [])
+    const signer = provider.getSigner()
+    setAddress(await signer.getAddress())
+    setBalance(ethers.utils.formatEther(await signer.getBalance()))
+  }
+
+  const handleRefresh = async () => {
+    const provider = new ethers.providers.InfuraProvider('sepolia')
+    const counter = Counter__factory.connect(COUNTER_ADDRESS, provider)
+    const n = await counter.number()
+    setCount(n.toNumber())
+  }
+
+  const handleIncrement = async () => {
+    console.log('increment')
+    const provider = new ethers.providers.Web3Provider(window.ethereum)
+    const signer = await provider.getSigner()
+    const counter = Counter__factory.connect(COUNTER_ADDRESS, signer)
+    await counter.increment()
+  }
+
+  const handleSetNumber = async () => {
+    console.log('set number')
+    const provider = new ethers.providers.Web3Provider(window.ethereum)
+    const signer = await provider.getSigner()
+    const contract = Counter__factory.connect(COUNTER_ADDRESS, signer)
+    await contract.setNumber(number)
+  }
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
+    <div className="">
+      {/* Navbar */}
+      <nav className="bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+        <div className="container mx-auto flex justify-between items-center py-3 px-4">
+          <a href="/" className="flex items-center">
             <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
+              src="/next.svg"
+              className="mr-3 h-6 sm:h-9"
+              alt="Shadcn Logo"
               width={100}
-              height={24}
-              priority
+              height={100}
             />
+            <span className="self-center whitespace-nowrap text-xl font-semibold dark:text-white">
+              DApp Demo
+            </span>
           </a>
+          {address ? (
+            <>
+              <div>{address}</div>
+              <div>{balance}</div>
+            </>
+          ) : (
+            <Button onClick={handleConnectWallet}>Connect Wallet</Button>
+          )}
+        </div>
+      </nav>
+
+      {/* Main content */}
+      <div className="min-w-full min-h-full">
+        <div className="container flex flex-col justify-center items-center space-y-5">
+          <div className="text-3xl font-bold ">Counter {count}</div>
+          <Button color="light" onClick={handleRefresh}>
+            Refresh Counter
+          </Button>
+
+          <Card className="flex flex-col items-center justify-center space-y-4 p-4">
+            <Button className="w-full">Increment Counter</Button>
+          </Card>
+
+          <Card className="flex flex-col items-center justify-center space-y-4 p-4">
+            <div>
+              <div className="mb-2 block">
+                <Label htmlFor="number" defaultValue="Set Number" />
+              </div>
+              <Input
+                id="number"
+                type="number"
+                placeholder="Enter Initial Count Number"
+                value={number}
+                required={true}
+                onChange={(e) => setNumber(parseInt(e.target.value))}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <Button
+                type="submit"
+                onClick={handleSetNumber}
+                className="w-full"
+              >
+                Submit
+              </Button>
+            </div>
+          </Card>
         </div>
       </div>
 
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  );
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+        <div className="container mx-auto flex justify-between items-center py-3 px-4">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            &copy; {new Date().getFullYear()} Build with ❤️ by Asharib Ali
+          </div>
+          <div className="flex space-x-4">
+            <a href="#" className="text-sm text-gray-600 dark:text-gray-400">
+              About
+            </a>
+            <a href="#" className="text-sm text-gray-600 dark:text-gray-400">
+              Privacy Policy
+            </a>
+            <a href="#" className="text-sm text-gray-600 dark:text-gray-400">
+              Licensing
+            </a>
+            <a href="#" className="text-sm text-gray-600 dark:text-gray-400">
+              Contact
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
 }
+
+export default Home
